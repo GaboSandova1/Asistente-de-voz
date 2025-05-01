@@ -2,10 +2,20 @@ from streamlit_mic_recorder import speech_to_text
 import streamlit as st
 import requests
 import json
+import pyttsx3
 
 # Configuración
 st.title("Asistente de voz con Ollama ")
 
+# Función para leer en voz alta
+def leer_texto(texto):
+    engine = pyttsx3.init()
+    engine.setProperty('rate', 150)  # velocidad
+    engine.setProperty('voice', 'spanish')  # intentar usar una voz en español si está disponible
+    engine.say(texto)
+    engine.runAndWait()
+
+# Función para consultar a Ollama
 def ask_ollama(prompt):
     try:
         response = requests.post(
@@ -17,7 +27,7 @@ def ask_ollama(prompt):
                 "stream": False,
                 "options": {"temperature": 0.1} 
             }),
-            timeout=15
+            timeout=60
         )
         return response.json().get("response", "Error: Formato de respuesta inesperado")
     except requests.exceptions.RequestException as e:
@@ -39,3 +49,7 @@ if texto:
     with st.spinner("Procesando..."):
         respuesta = ask_ollama(texto)
         st.write("**Asistente:**", respuesta)
+
+        # Botón para leer la respuesta
+        if st.button("🔊 Leer respuesta"):
+            leer_texto(respuesta)
