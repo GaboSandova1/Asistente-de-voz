@@ -1,21 +1,16 @@
 from streamlit_mic_recorder import speech_to_text
+from gtts import gTTS
 import streamlit as st
 import requests
 import json
-import pyttsx3
+import tempfile
+import pygame
+import time
+import os
 
-# Configuración
-st.title("Asistente de voz con Ollama ")
+st.title("Asistente de voz con Ollama y Google TTS")
 
-# Función para leer en voz alta
-def leer_texto(texto):
-    engine = pyttsx3.init()
-    engine.setProperty('rate', 150)  # velocidad
-    engine.setProperty('voice', 'spanish')  # intentar usar una voz en español si está disponible
-    engine.say(texto)
-    engine.runAndWait()
-
-# Función para consultar a Ollama
+# Función para preguntar a Ollama
 def ask_ollama(prompt):
     try:
         response = requests.post(
@@ -35,21 +30,33 @@ def ask_ollama(prompt):
     except Exception as e:
         return f"Error inesperado: {str(e)}"
 
-# Captura de voz
-texto = speech_to_text(
-    language='es',
-    start_prompt="🎤 Hablar",
-    stop_prompt="⏹️ Detener",
-    key='stt'
-)
+# Función para leer respuesta en voz alta con gTTS
+def leer_con_gtts(texto):
+    tts = gTTS(text=texto, lang='es', slow=False)
+    # Crear la carpeta "Audios" si no existe
+    os.makedirs("Audios", exist_ok=True)
 
-# Procesamiento
+    # Contar los archivos existentes en la carpeta "Audios"
+    num_archivos = len([nombre for nombre in os.listdir("Audios") if nombre.startswith("respuesta") and nombre.endswith(".mp3")])
+
+    ruta_mp3 = f"Audios/respuesta {num_archivos + 1}.mp3"
+    tts.save(ruta_mp3)
+    
+    pygame.mixer.init()
+    pygame.mixer.music.load(ruta_mp3)
+    pygame.mixer.music.play()
+    while pygame.mixer.music.get_busy():
+        time.sleep(0.5)
+
+
+# Captura de voz
+texto = speech_to_text(language='es', start_prompt="🎤 Hablar", stop_prompt="⏹️ Detener", key='stt')
+
 if texto:
     st.write("**Tú:**", texto)
     with st.spinner("Procesando..."):
         respuesta = ask_ollama(texto)
         st.write("**Asistente:**", respuesta)
 
-        # Botón para leer la respuesta
-        if st.button("🔊 Leer respuesta"):
-            leer_texto(respuesta)
+    if st.button("Leer respuesta en voz alta"):
+        leer_con_gtts(respuesta)
